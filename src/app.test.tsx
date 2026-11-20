@@ -38,3 +38,25 @@ test("shows the flats of a folder, opens one, and names the fix when the folder 
 
 	expect((await screen.findByRole("alert")).textContent).toContain(PERMISSION_MESSAGE);
 });
+
+test("starts the list again from the first page when Show is clicked with the same inputs", async () => {
+	const flats = fixture_flats(2);
+	const fetchJson = vi.fn(async (_path: string, _body: { cursor?: string | null }) => ({
+		status: 200,
+		body: { items: flats.map(fixture_row), cursor: null, isDone: true },
+	}));
+	render(<App client={{ fetchJson, fetchRaw: vi.fn() } as unknown as BonoboClient} />);
+
+	await screen.findByRole("button", { name: flats[0].title });
+	fireEvent.click(screen.getByRole("button", { name: "Show" }));
+	await screen.findByRole("button", { name: flats[0].title });
+	const callsBefore = fetchJson.mock.calls.length;
+
+	fireEvent.click(screen.getByRole("button", { name: "Show" }));
+	await screen.findByRole("button", { name: flats[0].title });
+
+	expect(fetchJson, "Show with the same inputs must send a new first-page request").toHaveBeenCalledTimes(
+		callsBefore + 1,
+	);
+	expect(fetchJson.mock.calls[callsBefore][1].cursor).toBeNull();
+});

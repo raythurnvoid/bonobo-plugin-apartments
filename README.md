@@ -4,7 +4,7 @@ A Bonobo Senate plugin page that shows flat listings saved as files. Each flat i
 with frontmatter. The page sorts and filters the flats by their frontmatter fields with
 `POST /api/v1/files/query`, so it never loads the whole folder.
 
-Version 0.1.0 is a first draft. It pins SDK 0.28.0, the first SDK that types `files/query`.
+Version 0.1.1 is a first draft. It pins SDK 0.28.0, the first SDK that types `files/query`.
 
 ## What the person must allow
 

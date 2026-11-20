@@ -100,6 +100,9 @@ export function App(props: { client: BonoboClient }) {
 	const [maxRent, setMaxRent] = useState<number | null>(null);
 	const [maxRentDraft, setMaxRentDraft] = useState("");
 	const [openRow, setOpenRow] = useState<FlatRow | null>(null);
+	// Count the Show clicks. Show must reload the list even when nothing changed, and equal state
+	// alone does not render again.
+	const [showCount, setShowCount] = useState(0);
 
 	const choice: ViewChoice = useMemo(() => ({ view, status, maxRent }), [view, status, maxRent]);
 
@@ -117,6 +120,7 @@ export function App(props: { client: BonoboClient }) {
 		setFolder(nextFolder);
 		setFolderDraft(nextFolder);
 		setMaxRent(nextMaxRent !== null && Number.isFinite(nextMaxRent) && nextMaxRent >= 0 ? nextMaxRent : null);
+		setShowCount((value) => value + 1);
 		save_folder(nextFolder);
 	};
 
@@ -197,9 +201,9 @@ export function App(props: { client: BonoboClient }) {
 						{folderError}
 					</div>
 				) : null}
-				{/* A new folder or view starts a new list: the key drops the old rows and the old cursor. */}
+				{/* A new folder, view or Show click starts a new list: the key drops the old rows and the old cursor. */}
 				<FlatTable
-					key={JSON.stringify([folder, choice])}
+					key={JSON.stringify([folder, choice, showCount])}
 					client={props.client}
 					folder={folder}
 					choice={choice}

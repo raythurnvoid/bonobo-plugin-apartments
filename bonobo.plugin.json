@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"name": "apartments",
 	"displayName": "Apartments",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Browse flat listings saved as files, sorted and filtered by their fields.",
 	"compatibility": {
 		"bonoboPluginRuntime": "1"
@@ -29,8 +29,8 @@
 		},
 		{
 			"path": "dist/frontend/assets/index.js",
-			"sha256": "sha256:00d345a02ce085aad4c1c5b3120b13ff4293f7d7a7f2a1b0e8caf2856b4ae7f3",
-			"bytes": 468592,
+			"sha256": "sha256:f019942af7e84b392ae5c0b5869a689031455258232d5db4104f933572f2e8c8",
+			"bytes": 468689,
 			"contentType": "application/javascript"
 		},
 		{

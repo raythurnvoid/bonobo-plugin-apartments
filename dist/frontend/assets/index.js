@@ -13580,6 +13580,7 @@ function App(props) {
 	const [maxRent, setMaxRent] = useState(null);
 	const [maxRentDraft, setMaxRentDraft] = useState("");
 	const [openRow, setOpenRow] = useState(null);
+	const [showCount, setShowCount] = useState(0);
 	const choice = useMemo(
 		() => ({
 			view,
@@ -13600,6 +13601,7 @@ function App(props) {
 		setFolder(nextFolder);
 		setFolderDraft(nextFolder);
 		setMaxRent(nextMaxRent !== null && Number.isFinite(nextMaxRent) && nextMaxRent >= 0 ? nextMaxRent : null);
+		setShowCount((value) => value + 1);
 		save_folder(nextFolder);
 	};
 	const handle_close_details = useCallback(() => {
@@ -13730,7 +13732,7 @@ function App(props) {
 							choice,
 							onOpen: setOpenRow,
 						},
-						JSON.stringify([folder, choice]),
+						JSON.stringify([folder, choice, showCount]),
 					),
 				],
 			}),
