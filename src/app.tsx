@@ -225,14 +225,20 @@ function FlatTable(props: {
 	choice: ViewChoice;
 	onOpen: (row: FlatRow) => void;
 }) {
+	// Aborts when the table closes (a new folder or view mounts a new table), so the old paging and
+	// its 429 waits send no more requests.
+	const [controller] = useState(() => new AbortController());
 	const list = useMemo(
-		() => create_flat_list(props.client, props.folder, props.choice),
-		[props.client, props.folder, props.choice],
+		() => create_flat_list(props.client, props.folder, props.choice, controller.signal),
+		[props.client, props.folder, props.choice, controller],
 	);
 	const [rows, setRows] = useState<FlatRow[]>([]);
 	const [hasMore, setHasMore] = useState(true);
-	const [loading, setLoading] = useState(false);
+	// The first page starts loading right after the first render. Start as loading, so "Load more"
+	// does not flash before it.
+	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
 	// Allow one load at a time. A ref keeps the check exact between renders.
 	const loadingRef = useRef(false);
 
@@ -243,21 +249,37 @@ function FlatTable(props: {
 		loadingRef.current = true;
 		setLoading(true);
 		setError(null);
+		setNotice(null);
 
 		const result = await list.load_next();
-		if (result.rows.length > 0) {
+		if (controller.signal.aborted) {
+			return;
+		}
+		// After a restart the list holds only the rows from the first page again.
+		if (result.restarted) {
+			setRows(result.rows);
+		} else if (result.rows.length > 0) {
 			setRows((previous) => [...previous, ...result.rows]);
 		}
 		setError(result.errorMessage);
 		setHasMore(list.has_more());
+		// A click can use all its requests on short pages and find no rows. Say so, or the click
+		// looks like it did nothing.
+		if (result.restarted) {
+			setNotice("The list changed, so it started again.");
+		} else if (result.rows.length === 0 && result.errorMessage === null && list.has_more()) {
+			setNotice("No flats found in these pages yet. Load more keeps looking.");
+		}
 
 		loadingRef.current = false;
 		setLoading(false);
-	}, [list]);
+	}, [list, controller]);
 
 	useEffect(() => {
 		void load_more();
 	}, [load_more]);
+
+	useEffect(() => () => controller.abort(), [controller]);
 
 	return (
 		<div className="flats-list">
@@ -295,7 +317,8 @@ function FlatTable(props: {
 									<td>{row_number(row, "frontmatter.rooms") ?? "—"}</td>
 									<td>{format_number(row_number(row, "frontmatter.bikeMin"), "min")}</td>
 									<td>{format_date(row_field(row, "frontmatter.postedAt"))}</td>
-									<td>{row_field(row, "frontmatter.status") ?? "—"}</td>
+									{/* `String` shows a `true` or `false` status as text. JSX shows a boolean as nothing. */}
+									<td>{String(row_field(row, "frontmatter.status") ?? "—")}</td>
 								</tr>
 							))}
 						</tbody>
@@ -305,6 +328,11 @@ function FlatTable(props: {
 			{loading ? (
 				<div className="flats-status" role="status" aria-live="polite">
 					Loading…
+				</div>
+			) : null}
+			{notice !== null ? (
+				<div className="flats-status" role="status" aria-live="polite">
+					{notice}
 				</div>
 			) : null}
 			{error !== null ? (
@@ -382,7 +410,9 @@ function format_fact(line: (typeof FACT_LINES)[number], facts: FlatFacts) {
 }
 
 type FlatDetails_State =
-	{ step: "loading" } | { step: "error"; message: string } | { step: "ready"; facts: FlatFacts; description: string };
+	| { step: "loading" }
+	| { step: "error"; message: string }
+	| { step: "ready"; facts: FlatFacts; description: string; isCut: boolean };
 
 function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row: FlatRow; onClose: () => void }) {
 	const { client, row } = props;
@@ -398,40 +428,38 @@ function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row:
 	}, []);
 
 	useEffect(() => {
-		// Ignore an answer that arrives after the details closed or a retry started.
-		let cancelled = false;
+		// When the details close or a retry starts, stop sending requests and ignore late answers.
+		const controller = new AbortController();
 		setState({ step: "loading" });
 		setPhotosError(null);
 
-		read_flat_text(client, row.path).then(
-			(text) => {
-				if (!cancelled) {
-					setState({ step: "ready", ...parse_flat_file(text) });
+		read_flat_text(client, row.path, controller.signal).then(
+			(result) => {
+				if (!controller.signal.aborted) {
+					setState({ step: "ready", ...parse_flat_file(result.text), isCut: result.isCut });
 				}
 			},
 			(error: unknown) => {
-				if (!cancelled) {
+				if (!controller.signal.aborted) {
 					setState({ step: "error", message: get_error_message(error) });
 				}
 			},
 		);
 		// The photos load on their own. A failed photo list must not hide the facts.
-		list_flat_photos(client, row.path).then(
+		list_flat_photos(client, row.path, controller.signal).then(
 			(items) => {
-				if (!cancelled) {
+				if (!controller.signal.aborted) {
 					setPhotos(items);
 				}
 			},
 			(error: unknown) => {
-				if (!cancelled) {
+				if (!controller.signal.aborted) {
 					setPhotosError(get_error_message(error));
 				}
 			},
 		);
 
-		return () => {
-			cancelled = true;
-		};
+		return () => controller.abort();
 	}, [client, row.path, attempt]);
 
 	const adUrl = state.step === "ready" ? safe_ad_url(state.facts.get("url")) : null;
@@ -502,6 +530,7 @@ function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row:
 							<h2>Description</h2>
 							{/* Plain text only. The file body is never rendered as HTML. */}
 							<p>{state.description}</p>
+							{state.isCut ? <p>The file is longer than 2 MiB, so the description was cut.</p> : null}
 						</div>
 					) : null}
 				</>

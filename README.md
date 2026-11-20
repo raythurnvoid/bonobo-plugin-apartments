@@ -89,12 +89,14 @@ Every view is one folder query on one field (`mode: "folder"`).
 | By status          | `frontmatter.status`   | `match: { eq: "<status>" }`                                                |
 
 The table asks for its columns with `fields`, so one request returns everything a page of rows
-shows. "Load more" follows the cursor, 50 rows per request.
+shows. "Load more" follows the cursor, 50 rows per request. When the host ends the cursor (for
+example after files moved), the list starts again from the first page and says so.
 
-The details of one flat read the file with `files/read` and parse the frontmatter. Only the keys in
-the table above are read. The ad address is shown as text with a Copy button, never as a link,
-because the plugin frame cannot open new tabs. Photos come from `files/list` on the photo folder and
-`files/download-urls`.
+The details of one flat read the file with `files/read` and parse the frontmatter. They read at most
+about 2 MiB of a file and say when the description was cut. Only the keys in the table above are
+read. The ad address is shown as text with a Copy button, never as a link, because the plugin frame
+cannot open new tabs. Photos come from `files/list` on the photo folder and `files/download-urls`.
+A file whose name does not end with `.md` has no photo folder, so it shows no photos.
 
 The page keeps one thing in `localStorage`: the folder path, under the key
 `bonobo-plugin-apartments:folder`. It stores no file data there.
@@ -126,3 +128,9 @@ T3_API_ORIGIN=<api origin> T3_API_KEY=<personal key> node scripts/seed-qa-flats.
 Remove `--dry-run` to write 20 fake flat files and a few tiny photos. The key needs `files:write`.
 The script creates data that costs money, so read the Bonobo Senate `qa-data` skill first and add
 the folder to its catalog. Never use real listing data for tests.
+
+- The folder name must start with `qa-` (the default is `/qa-flats`), so the script never writes to
+  a real flats folder.
+- `T3_API_ORIGIN` must use `https`. Plain `http` is allowed only for `localhost` and `127.0.0.1`.
+- A second run saves no flat file again, because unchanged files are skipped. The photos are
+  uploaded again on every run.

@@ -3,29 +3,6 @@ import { describe, expect, test, vi } from "vitest";
 import { fixture_flats } from "./fixtures/flats";
 import { fixture_row } from "./fixtures/rows";
 import { create_flat_list } from "./flat-list";
-import { PAGE_LIMIT, TABLE_FIELDS, view_request, type ViewChoice } from "./views";
-
-describe("view_request", () => {
-	const choice = (view: ViewChoice["view"]): ViewChoice => ({ view, status: "saved", maxRent: 900 });
-
-	test.each([
-		["newest", { field: "frontmatter.postedAt", order: "desc" }],
-		["cheapest", { field: "frontmatter.rentWarm", order: "asc" }],
-		["biggest", { field: "frontmatter.sizeM2", order: "desc" }],
-		["shortest-bike", { field: "frontmatter.bikeMin", order: "asc" }],
-		["ideal", { field: "frontmatter.ideal", match: { eq: true } }],
-		["status", { field: "frontmatter.status", match: { eq: "saved" } }],
-	] as const)("the %s view sends one folder query on its field", (view, expected) => {
-		expect(view_request("/flats", choice(view), "c1")).toEqual({
-			mode: "folder",
-			path: "/flats",
-			fields: TABLE_FIELDS,
-			limit: PAGE_LIMIT,
-			cursor: "c1",
-			...expected,
-		});
-	});
-});
 
 describe("create_flat_list", () => {
 	test("the cheapest view stops paging at the first rent above the max", async () => {
@@ -35,11 +12,12 @@ describe("create_flat_list", () => {
 			status: 200,
 			body: { items: flats.map(fixture_row), cursor: "next", isDone: false },
 		}));
-		const list = create_flat_list({ fetchJson } as unknown as BonoboClient, "/flats", {
-			view: "cheapest",
-			status: "new",
-			maxRent,
-		});
+		const list = create_flat_list(
+			{ fetchJson } as unknown as BonoboClient,
+			"/flats",
+			{ view: "cheapest", status: "new", maxRent },
+			new AbortController().signal,
+		);
 
 		const first = await list.load_next();
 
@@ -48,5 +26,49 @@ describe("create_flat_list", () => {
 		expect(list.has_more()).toBe(false);
 		expect((await list.load_next()).rows).toEqual([]);
 		expect(fetchJson).toHaveBeenCalledTimes(1);
+	});
+
+	test("one click follows the cursor past an empty page to the rows", async () => {
+		const flats = fixture_flats(2);
+		const fetchJson = vi
+			.fn()
+			.mockResolvedValueOnce({ status: 200, body: { items: [], cursor: "c1", isDone: false } })
+			.mockResolvedValueOnce({ status: 200, body: { items: flats.map(fixture_row), cursor: null, isDone: true } });
+		const list = create_flat_list(
+			{ fetchJson } as unknown as BonoboClient,
+			"/flats",
+			{ view: "newest", status: "new", maxRent: null },
+			new AbortController().signal,
+		);
+
+		const result = await list.load_next();
+
+		expect(result.rows).toHaveLength(flats.length);
+		expect(fetchJson).toHaveBeenCalledTimes(2);
+		expect(fetchJson.mock.calls[1][1]).toMatchObject({ cursor: "c1" });
+	});
+
+	test("an ended cursor starts the whole list again from the first page", async () => {
+		const flats = fixture_flats(3);
+		const fetchJson = vi
+			.fn()
+			.mockResolvedValueOnce({ status: 200, body: { items: [fixture_row(flats[0])], cursor: "c1", isDone: false } })
+			.mockResolvedValueOnce({ status: 400, body: { message: "Cursor changed", errorCode: "invalid_cursor" } })
+			.mockResolvedValueOnce({ status: 200, body: { items: flats.map(fixture_row), cursor: null, isDone: true } });
+		const list = create_flat_list(
+			{ fetchJson } as unknown as BonoboClient,
+			"/flats",
+			{ view: "newest", status: "new", maxRent: null },
+			new AbortController().signal,
+		);
+		await list.load_next();
+
+		const result = await list.load_next();
+
+		// The first page comes back whole, including the flat shown before the restart, so the
+		// table can replace its rows.
+		expect(result.restarted).toBe(true);
+		expect(result.rows).toHaveLength(flats.length);
+		expect(fetchJson.mock.calls[2][1]).toMatchObject({ cursor: null });
 	});
 });

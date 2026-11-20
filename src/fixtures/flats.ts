@@ -1,4 +1,5 @@
-// Fake flats for tests and for the QA seed script. Nothing here comes from a real listing.
+// Fake flats for tests and for the QA seed script. Nothing here comes from a real listing. The seed
+// script writes them only to a folder whose name starts with `qa-`, such as `/qa-flats`.
 //
 // Keep this file free of imports and of TypeScript-only syntax that needs a build step (no enums,
 // no namespaces), because `scripts/seed-qa-flats.mjs` imports it straight from Node.

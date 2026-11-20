@@ -79,7 +79,8 @@ export function create_media_url_manager(client: BonoboClient): MediaUrlManager 
 	}
 
 	// Renewals use a one-item download-urls request through the four-slot pool. They share the
-	// same per-node in-flight promise and 3s/6s 429 back-off as initial batches.
+	// same per-node in-flight promise and the same 429 back-off (`wait_before_429_retry`) as
+	// initial batches.
 	function request_download_url(nodeId: string): Promise<MediaUrl> {
 		const in_flight = pending.get(nodeId);
 		if (in_flight) {
@@ -89,7 +90,7 @@ export function create_media_url_manager(client: BonoboClient): MediaUrlManager 
 			await acquire_slot();
 			try {
 				const response = download_urls_body(
-					await fetch_json_with_429_retry(client, "/api/v1/files/download-urls", { fileNodeIds: [nodeId] }),
+					await fetch_json_with_429_retry(client, "/api/v1/files/download-urls", { fileNodeIds: [nodeId] }, null),
 				);
 				const item = response.items[0];
 				if (!item) {
@@ -108,7 +109,7 @@ export function create_media_url_manager(client: BonoboClient): MediaUrlManager 
 	}
 
 	// Initial loads: the node joins the batch queue and resolves when its batch lands —
-	// same per-node in-flight promise as renewals, same 3s/6s 429 back-off per batch call.
+	// same per-node in-flight promise as renewals, same 429 back-off per batch call.
 	function request_download_url_batched(nodeId: string): Promise<MediaUrl> {
 		const in_flight = pending.get(nodeId);
 		if (in_flight) {
@@ -132,9 +133,14 @@ export function create_media_url_manager(client: BonoboClient): MediaUrlManager 
 			await acquire_slot();
 			try {
 				const response = download_urls_body(
-					await fetch_json_with_429_retry(client, "/api/v1/files/download-urls", {
-						fileNodeIds: entries.map((entry) => entry.nodeId),
-					}),
+					await fetch_json_with_429_retry(
+						client,
+						"/api/v1/files/download-urls",
+						{
+							fileNodeIds: entries.map((entry) => entry.nodeId),
+						},
+						null,
+					),
 				);
 				const items_by_node_id = new Map(response.items.map((item) => [item.fileNodeId, item]));
 				const errors_by_node_id = new Map(response.errors.map((item) => [item.fileNodeId, item.message]));

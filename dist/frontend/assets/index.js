@@ -6813,6 +6813,11 @@ function createRoot(container) {
 // src/retry.ts
 /** How many times a rate-limited call is sent again before its 429 is returned. */
 var MAX_429_RETRIES = 4;
+/**
+ * The longest wait after a 429. The page should not look stuck for longer, so a longer
+ * `retryAfterMs` comes back as the 429 at once.
+ */
+var MAX_429_WAIT_MS = 3e4;
 function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -6820,74 +6825,132 @@ function get_error_message(error) {
 	return error instanceof Error ? error.message : String(error);
 }
 /**
- * `client.fetchJson` with the 429 back-off the SDK README asks for: wait `retryAfterMs` plus a
- * small random delay, then send the exact same body (including any cursor) again.
+ * Wait before a rate-limited call is sent again: `retryAfterMs` plus a small random delay, like the
+ * SDK README asks. `retries` is how many times the call was already sent again.
  *
- * A 429 without `retryAfterMs` does not clear soon, so it comes back at once. Every other status
- * comes back for the caller to narrow on, a 5xx included. `body` is `null` when the answer did not
- * parse as JSON. Only a refused session refresh and a network failure reject.
+ * Returns false when the call must not be sent again: the answer has no `retryAfterMs` (it does not
+ * clear soon), the wait is longer than 30 s, or the retries are used up. Throws when `signal`
+ * aborted during the wait, because the page no longer needs the answer.
  */
-async function fetch_json_with_429_retry(client, path, body) {
-	for (let attempt = 0; ; attempt += 1) {
+async function wait_before_429_retry(retryAfterMs, retries, signal) {
+	if (typeof retryAfterMs !== "number" || retryAfterMs > MAX_429_WAIT_MS || retries >= MAX_429_RETRIES) return false;
+	await sleep(retryAfterMs + Math.random() * 250);
+	signal?.throwIfAborted();
+	return true;
+}
+/**
+ * `client.fetchJson` with the 429 back-off of `wait_before_429_retry`. A retry sends the exact same
+ * body (including any cursor) again.
+ *
+ * Every other status comes back for the caller to narrow on, a 5xx included. `body` is `null` when
+ * the answer did not parse as JSON. A refused session refresh, a network failure and an aborted
+ * `signal` reject.
+ */
+async function fetch_json_with_429_retry(client, path, body, signal) {
+	for (let retries = 0; ; retries += 1) {
 		const answer = await client.fetchJson(path, body);
 		const answerBody = answer.body;
-		const retryAfterMs =
-			answer.status === 429 && typeof answerBody === "object" && answerBody !== null && "retryAfterMs" in answerBody
-				? answerBody.retryAfterMs
-				: void 0;
-		if (typeof retryAfterMs === "number" && attempt < MAX_429_RETRIES) {
-			await sleep(retryAfterMs + Math.random() * 250);
+		if (
+			await wait_before_429_retry(
+				answer.status === 429 && typeof answerBody === "object" && answerBody !== null && "retryAfterMs" in answerBody
+					? answerBody.retryAfterMs
+					: void 0,
+				retries,
+				signal,
+			)
+		)
 			continue;
-		}
 		return answer;
 	}
 }
 /**
- * Read the whole text of one flat file.
+ * Read one field of an error answer. The answer is JSON, but it can also be something else.
+ */
+function error_field(body, key) {
+	return typeof body === "object" && body !== null ? Reflect.get(body, key) : void 0;
+}
+/**
+ * Read the text of one flat file. `isCut` is true when the file is longer than
+ * `MAX_FLAT_TEXT_BYTES` and only its start was read.
  *
  * The read route answers bytes, one page at a time. One decoder is kept across the pages, so a
  * character that is split between two pages still decodes right.
  */
-async function read_flat_text(client, path) {
-	const decoder = new TextDecoder();
+async function read_flat_text(client, path, signal) {
+	let decoder = new TextDecoder();
 	let cursor = null;
 	let text = "";
-	do {
+	let bytes = 0;
+	let restarted = false;
+	let rateLimitedRetries = 0;
+	for (;;) {
 		const response = await client.fetchRaw("/api/v1/files/read", {
 			path,
 			cursor,
 		});
 		if (!response.ok) {
 			const body = await response.json().catch(() => null);
-			const message =
-				typeof body === "object" && body !== null && "message" in body && typeof body.message === "string"
-					? body.message
-					: `The file read answered ${response.status}`;
-			throw new Error(message);
+			if (
+				response.status === 429 &&
+				(await wait_before_429_retry(error_field(body, "retryAfterMs"), rateLimitedRetries, signal))
+			) {
+				rateLimitedRetries += 1;
+				continue;
+			}
+			if (response.status === 409 && error_field(body, "errorCode") === "file_changed" && !restarted) {
+				restarted = true;
+				decoder = new TextDecoder();
+				cursor = null;
+				text = "";
+				bytes = 0;
+				continue;
+			}
+			const message = error_field(body, "message");
+			throw new Error(typeof message === "string" ? message : `The file read answered ${response.status}`);
 		}
-		text += decoder.decode(await response.arrayBuffer(), { stream: true });
+		const chunk = await response.arrayBuffer();
+		bytes += chunk.byteLength;
+		text += decoder.decode(chunk, { stream: true });
 		cursor = response.headers.get("X-File-Next-Cursor");
-	} while (cursor !== null);
-	return text + decoder.decode();
+		if (cursor === null)
+			return {
+				text: text + decoder.decode(),
+				isCut: false,
+			};
+		if (bytes >= 2097152)
+			return {
+				text,
+				isCut: true,
+			};
+		signal.throwIfAborted();
+	}
 }
 /**
- * The folder that holds the photos of one flat: the flat file path without `.md`.
+ * The folder that holds the photos of one flat: the flat file path without `.md`. A file that does
+ * not end with `.md` has no photo folder, so this gives `null`.
  */
 function flat_photo_folder(flatPath) {
-	return flatPath.replace(/\.md$/u, "");
+	return flatPath.endsWith(".md") ? flatPath.slice(0, -3) : null;
 }
 /**
  * List the photos of one flat. A flat without a photo folder has no photos, so a missing or
  * unreadable folder gives an empty list instead of an error.
  */
-async function list_flat_photos(client, flatPath) {
-	const answer = await fetch_json_with_429_retry(client, "/api/v1/files/list", {
-		path: flat_photo_folder(flatPath),
-		recursive: true,
-		kind: "file",
-		contentTypePrefixes: ["image/"],
-		limit: 24,
-	});
+async function list_flat_photos(client, flatPath, signal) {
+	const folder = flat_photo_folder(flatPath);
+	if (folder === null) return [];
+	const answer = await fetch_json_with_429_retry(
+		client,
+		"/api/v1/files/list",
+		{
+			path: folder,
+			recursive: true,
+			kind: "file",
+			contentTypePrefixes: ["image/"],
+			limit: 24,
+		},
+		signal,
+	);
 	if (answer.status === 403 || answer.status === 404) return [];
 	if (answer.status !== 200) throw new Error(answer.body?.message ?? `The files list answered ${answer.status}`);
 	if (answer.body === null) throw new Error("The files list answered 200 with a body that is not JSON");
@@ -7032,7 +7095,10 @@ function take_rows_up_to_max_rent(rows, maxRent) {
 }
 /** The message for a folder the person did not choose for this plugin. */
 var PERMISSION_MESSAGE = "Choose the flats folder in My file permissions.";
-function create_flat_list(client, folder, choice) {
+/**
+ * `signal` aborts when the table closes. Then no more requests go out.
+ */
+function create_flat_list(client, folder, choice, signal) {
 	let cursor = null;
 	let isDone = false;
 	const seenNodeIds = /* @__PURE__ */ new Set();
@@ -7042,11 +7108,12 @@ function create_flat_list(client, folder, choice) {
 			let errorMessage = null;
 			let restarted = false;
 			try {
-				for (let requests = 0; rows.length === 0 && !isDone && requests < 8; requests += 1) {
+				for (let requests = 0; rows.length === 0 && !isDone && !signal.aborted && requests < 8; requests += 1) {
 					const answer = await fetch_json_with_429_retry(
 						client,
 						"/api/v1/files/query",
 						view_request(folder, choice, cursor),
+						signal,
 					);
 					if (
 						answer.status === 400 &&
@@ -7057,6 +7124,7 @@ function create_flat_list(client, folder, choice) {
 					) {
 						restarted = true;
 						cursor = null;
+						seenNodeIds.clear();
 						continue;
 					}
 					if (answer.status === 403) throw new Error(PERMISSION_MESSAGE);
@@ -7079,6 +7147,7 @@ function create_flat_list(client, folder, choice) {
 			return {
 				rows,
 				errorMessage,
+				restarted,
 			};
 		},
 		has_more() {
@@ -13304,7 +13373,7 @@ function create_media_url_manager(client) {
 			await acquire_slot();
 			try {
 				const response = download_urls_body(
-					await fetch_json_with_429_retry(client, "/api/v1/files/download-urls", { fileNodeIds: [nodeId] }),
+					await fetch_json_with_429_retry(client, "/api/v1/files/download-urls", { fileNodeIds: [nodeId] }, null),
 				);
 				const item = response.items[0];
 				if (!item) throw new Error(response.errors[0]?.message ?? "Not found");
@@ -13345,9 +13414,12 @@ function create_media_url_manager(client) {
 			await acquire_slot();
 			try {
 				const response = download_urls_body(
-					await fetch_json_with_429_retry(client, "/api/v1/files/download-urls", {
-						fileNodeIds: entries.map((entry) => entry.nodeId),
-					}),
+					await fetch_json_with_429_retry(
+						client,
+						"/api/v1/files/download-urls",
+						{ fileNodeIds: entries.map((entry) => entry.nodeId) },
+						null,
+					),
 				);
 				const items_by_node_id = new Map(response.items.map((item) => [item.fileNodeId, item]));
 				const errors_by_node_id = new Map(response.errors.map((item) => [item.fileNodeId, item.message]));
@@ -13678,30 +13750,39 @@ function App(props) {
 	});
 }
 function FlatTable(props) {
+	const [controller] = useState(() => new AbortController());
 	const list = useMemo(
-		() => create_flat_list(props.client, props.folder, props.choice),
-		[props.client, props.folder, props.choice],
+		() => create_flat_list(props.client, props.folder, props.choice, controller.signal),
+		[props.client, props.folder, props.choice, controller],
 	);
 	const [rows, setRows] = useState([]);
 	const [hasMore, setHasMore] = useState(true);
-	const [loading, setLoading] = useState(false);
+	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [notice, setNotice] = useState(null);
 	const loadingRef = useRef(false);
 	const load_more = useCallback(async () => {
 		if (loadingRef.current) return;
 		loadingRef.current = true;
 		setLoading(true);
 		setError(null);
+		setNotice(null);
 		const result = await list.load_next();
-		if (result.rows.length > 0) setRows((previous) => [...previous, ...result.rows]);
+		if (controller.signal.aborted) return;
+		if (result.restarted) setRows(result.rows);
+		else if (result.rows.length > 0) setRows((previous) => [...previous, ...result.rows]);
 		setError(result.errorMessage);
 		setHasMore(list.has_more());
+		if (result.restarted) setNotice("The list changed, so it started again.");
+		else if (result.rows.length === 0 && result.errorMessage === null && list.has_more())
+			setNotice("No flats found in these pages yet. Load more keeps looking.");
 		loadingRef.current = false;
 		setLoading(false);
-	}, [list]);
+	}, [list, controller]);
 	useEffect(() => {
 		load_more();
 	}, [load_more]);
+	useEffect(() => () => controller.abort(), [controller]);
 	return /* @__PURE__ */ createVNode("div", {
 		className: "flats-list",
 		children: [
@@ -13775,7 +13856,9 @@ function FlatTable(props) {
 													/* @__PURE__ */ createVNode("td", {
 														children: format_date(row_field(row, "frontmatter.postedAt")),
 													}),
-													/* @__PURE__ */ createVNode("td", { children: row_field(row, "frontmatter.status") ?? "—" }),
+													/* @__PURE__ */ createVNode("td", {
+														children: String(row_field(row, "frontmatter.status") ?? "—"),
+													}),
 												],
 											},
 											row.nodeId,
@@ -13792,6 +13875,14 @@ function FlatTable(props) {
 						role: "status",
 						"aria-live": "polite",
 						children: "Loading…",
+					})
+				: null,
+			notice !== null
+				? /* @__PURE__ */ createVNode("div", {
+						className: "flats-status",
+						role: "status",
+						"aria-live": "polite",
+						children: notice,
 					})
 				: null,
 			error !== null
@@ -13954,36 +14045,35 @@ function FlatDetails(props) {
 		backRef.current?.focus();
 	}, []);
 	useEffect(() => {
-		let cancelled = false;
+		const controller = new AbortController();
 		setState({ step: "loading" });
 		setPhotosError(null);
-		read_flat_text(client, row.path).then(
-			(text) => {
-				if (!cancelled)
+		read_flat_text(client, row.path, controller.signal).then(
+			(result) => {
+				if (!controller.signal.aborted)
 					setState({
 						step: "ready",
-						...parse_flat_file(text),
+						...parse_flat_file(result.text),
+						isCut: result.isCut,
 					});
 			},
 			(error) => {
-				if (!cancelled)
+				if (!controller.signal.aborted)
 					setState({
 						step: "error",
 						message: get_error_message(error),
 					});
 			},
 		);
-		list_flat_photos(client, row.path).then(
+		list_flat_photos(client, row.path, controller.signal).then(
 			(items) => {
-				if (!cancelled) setPhotos(items);
+				if (!controller.signal.aborted) setPhotos(items);
 			},
 			(error) => {
-				if (!cancelled) setPhotosError(get_error_message(error));
+				if (!controller.signal.aborted) setPhotosError(get_error_message(error));
 			},
 		);
-		return () => {
-			cancelled = true;
-		};
+		return () => controller.abort();
 	}, [client, row.path, attempt]);
 	const adUrl = state.step === "ready" ? safe_ad_url(state.facts.get("url")) : null;
 	const handle_copy = () => {
@@ -14092,6 +14182,11 @@ function FlatDetails(props) {
 										children: [
 											/* @__PURE__ */ createVNode("h2", { children: "Description" }),
 											/* @__PURE__ */ createVNode("p", { children: state.description }),
+											state.isCut
+												? /* @__PURE__ */ createVNode("p", {
+														children: "The file is longer than 2 MiB, so the description was cut.",
+													})
+												: null,
 										],
 									})
 								: null,

@@ -9,7 +9,11 @@
 //   T3_API_ORIGIN=<api origin> T3_API_KEY=<personal key> node scripts/seed-qa-flats.mjs [--folder /qa-flats] [--dry-run]
 //
 // The key needs the `files:write` scope. Photos need a plan that allows uploads. When the upload
-// is refused, the script says so and keeps the text files.
+// is refused, the script says so and keeps the text files. Uploads have no "skip if unchanged", so
+// every run uploads the photos again.
+//
+// The script writes only to a folder whose name starts with `qa-`, so it never touches a real
+// flats folder. It sends the key only over https, or over http to localhost / 127.0.0.1.
 
 import process from "node:process";
 import { crc32, deflateSync } from "node:zlib";
@@ -40,6 +44,9 @@ function read_args() {
 	}
 	if (!/^\/[a-z0-9][a-z0-9/-]*$/u.test(folder)) {
 		fail(`The folder must look like /qa-flats (lowercase letters, digits and dashes). Got "${folder}"`);
+	}
+	if (!folder.split("/").at(-1).startsWith("qa-")) {
+		fail(`The folder name must start with qa-, for example /qa-flats. Got "${folder}"`);
 	}
 
 	return { folder, dryRun };
@@ -80,7 +87,7 @@ const flats = fixture_flats(20);
 const text_files = flats.map((flat) => ({
 	path: fixture_flat_path(folder, flat),
 	content: fixture_flat_text(flat),
-	overwrite: true,
+	overwrite: "replace",
 }));
 const photo_files = flats
 	.filter((flat) => flat.ideal)
@@ -106,6 +113,12 @@ const origin = process.env.T3_API_ORIGIN;
 const key = process.env.T3_API_KEY;
 if (!origin || !key) {
 	fail("Set T3_API_ORIGIN and T3_API_KEY first. The key is never printed.");
+}
+// Plain http would send the key as readable text. Allow it only to this computer.
+const origin_url = URL.parse(origin);
+const is_local = origin_url?.protocol === "http:" && ["localhost", "127.0.0.1"].includes(origin_url.hostname);
+if (origin_url?.protocol !== "https:" && !is_local) {
+	fail(`T3_API_ORIGIN must start with https:// (or http://localhost). Got "${origin}"`);
 }
 
 async function call(route, body) {
@@ -145,7 +158,7 @@ console.log(`seed-qa-flats: ${written} flat files saved or already the same, ${f
 
 const targets = await call("/api/v1/files/upload-urls", {
 	files: photo_files.map((file) => ({ path: file.path, contentType: "image/png", size: file.bytes.length })),
-	overwrite: true,
+	overwrite: "replace",
 });
 if (targets.status !== 200) {
 	// Uploads need a plan that allows them. The flats still work without photos.

@@ -16,16 +16,27 @@ export type FlatList = {
 	/**
 	 * One "Load more" click. It returns the new rows, and an error message when a request failed.
 	 * After an error the cursor is kept, so the next click continues from the same page.
+	 *
+	 * `restarted` is true when the host ended the cursor and the list started again at the first
+	 * page. Then `rows` replace every row shown before.
 	 */
-	load_next(): Promise<{ rows: FlatRow[]; errorMessage: string | null }>;
+	load_next(): Promise<{ rows: FlatRow[]; errorMessage: string | null; restarted: boolean }>;
 	/** False when the folder has no more rows for this view. */
 	has_more(): boolean;
 };
 
-export function create_flat_list(client: BonoboClient, folder: string, choice: ViewChoice): FlatList {
+/**
+ * `signal` aborts when the table closes. Then no more requests go out.
+ */
+export function create_flat_list(
+	client: BonoboClient,
+	folder: string,
+	choice: ViewChoice,
+	signal: AbortSignal,
+): FlatList {
 	let cursor: string | null = null;
 	let isDone = false;
-	// A flat can come back twice when the list starts again after an ended cursor.
+	// A flat whose sort value changed between two pages can come back on a later page. Show it once.
 	const seenNodeIds = new Set<string>();
 
 	return {
@@ -35,15 +46,21 @@ export function create_flat_list(client: BonoboClient, folder: string, choice: V
 			let restarted = false;
 
 			try {
-				for (let requests = 0; rows.length === 0 && !isDone && requests < LOAD_PAGE_BUDGET; requests += 1) {
+				for (
+					let requests = 0;
+					rows.length === 0 && !isDone && !signal.aborted && requests < LOAD_PAGE_BUDGET;
+					requests += 1
+				) {
 					const answer = await fetch_json_with_429_retry(
 						client,
 						"/api/v1/files/query",
 						view_request(folder, choice, cursor),
+						signal,
 					);
 
-					// The host ends a cursor when files move or the host updates. Start again from the
-					// first page, once per click. `seenNodeIds` skips the flats already shown.
+					// The host ends a cursor when files move or the host updates. Start the whole list again
+					// from the first page, once per click. Reading the old pages again only to skip the rows
+					// already shown would cost a request per old page.
 					if (
 						answer.status === 400 &&
 						answer.body !== null &&
@@ -53,6 +70,7 @@ export function create_flat_list(client: BonoboClient, folder: string, choice: V
 					) {
 						restarted = true;
 						cursor = null;
+						seenNodeIds.clear();
 						continue;
 					}
 					if (answer.status === 403) {
@@ -85,7 +103,7 @@ export function create_flat_list(client: BonoboClient, folder: string, choice: V
 				errorMessage = get_error_message(error);
 			}
 
-			return { rows, errorMessage };
+			return { rows, errorMessage, restarted };
 		},
 		has_more() {
 			return !isDone;

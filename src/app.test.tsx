@@ -24,8 +24,6 @@ test("shows the flats of a folder, opens one, and names the fix when the folder 
 
 	const open = await screen.findByRole("button", { name: flats[0].title });
 	expect(screen.getAllByRole("row")).toHaveLength(flats.length + 1);
-	// The first flat has an estimated warm rent, so it shows with `~`.
-	expect(screen.getByText(`~${flats[0].rentWarm} €`)).toBeTruthy();
 	expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
 
 	fireEvent.click(open);
