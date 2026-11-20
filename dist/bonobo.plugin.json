@@ -1,0 +1,43 @@
+{
+	"schemaVersion": 1,
+	"name": "apartments",
+	"displayName": "Apartments",
+	"version": "0.1.0",
+	"description": "Browse flat listings saved as files, sorted and filtered by their fields.",
+	"compatibility": {
+		"bonoboPluginRuntime": "1"
+	},
+	"events": [],
+	"pages": [
+		{
+			"id": "flats",
+			"title": "Flats",
+			"entry": "dist/frontend/index.html",
+			"navItem": {
+				"label": "Flats"
+			}
+		}
+	],
+	"capabilities": ["workspace.files.read"],
+	"outboundOrigins": [],
+	"files": [
+		{
+			"path": "dist/frontend/index.html",
+			"sha256": "sha256:cd0653b0ebb6842dffc206398920856c40a09a677123f5eaa23ca894b71df08c",
+			"bytes": 358,
+			"contentType": "text/html"
+		},
+		{
+			"path": "dist/frontend/assets/index.js",
+			"sha256": "sha256:8f18053323f6b988afaf65b3235f486b08d7d29b928cdbb408ce5b4c0513b802",
+			"bytes": 466319,
+			"contentType": "application/javascript"
+		},
+		{
+			"path": "dist/frontend/assets/index.css",
+			"sha256": "sha256:1bd77137f6b7beb37d1d175c93dafafe7d2dad1f4dca0dc999b9cedef8f4b5d2",
+			"bytes": 5676,
+			"contentType": "text/css"
+		}
+	]
+}

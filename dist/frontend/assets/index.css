@@ -1,0 +1,345 @@
+/* Apartments plugin. No external assets. Every color comes from the palette below. */
+
+/* The host sends its numbered color scales over the theme channel, and the SDK writes each one onto
+   the document element. So each role reads the app's own color first. The value after the comma is
+   the fallback for a host that sends no theme.
+
+   The SDK also puts the app's `light` or `dark` class on the document element. Without `light` the
+   dark fallbacks are used. */
+:root {
+	/* Tell the browser how to paint what this file cannot reach: scrollbars and native controls. */
+	color-scheme: dark;
+
+	--ap-surface: var(--color-base-1-01, #0b0b0e);
+	--ap-surface-raised: var(--color-base-1-03, #16161a);
+	--ap-surface-hover: var(--color-base-1-06, #232329);
+	--ap-border: var(--color-base-1-08, #2c2c33);
+	--ap-text: var(--color-fg-11, #ececef);
+	--ap-text-secondary: var(--color-fg-08, #a2a2ab);
+	--ap-accent: var(--color-accent-07, #8ab4ff);
+	--ap-error: var(--color-red-11, #ff8f8f);
+}
+
+:root.light {
+	color-scheme: light;
+
+	--ap-surface: var(--color-base-1-01, #ffffff);
+	--ap-surface-raised: var(--color-base-1-03, #f5f5f7);
+	--ap-surface-hover: var(--color-base-1-06, #e9e9ee);
+	--ap-border: var(--color-base-1-08, #d0d0d8);
+	--ap-text: var(--color-fg-11, #1b1b20);
+	--ap-text-secondary: var(--color-fg-08, #5b5b66);
+	--ap-accent: var(--color-accent-07, #1f5fd1);
+	--ap-error: var(--color-red-11, #b3261e);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	background: var(--ap-surface);
+	color: var(--ap-text);
+
+	font-family:
+		system-ui,
+		-apple-system,
+		"Segoe UI",
+		Roboto,
+		"Helvetica Neue",
+		Arial,
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.5;
+}
+
+#root {
+	min-height: 100vh;
+}
+
+h1 {
+	margin: 0 0 16px;
+
+	font-size: 18px;
+	font-weight: 600;
+}
+
+h2 {
+	margin: 0 0 8px;
+
+	font-size: 16px;
+	font-weight: 600;
+}
+
+/* The `hidden` attribute must win over any `display` set below. */
+[hidden] {
+	display: none !important;
+}
+
+.boot-screen {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	min-height: 100vh;
+	padding: 24px;
+
+	color: var(--ap-text-secondary);
+	text-align: center;
+}
+
+.boot-screen.is-error {
+	color: var(--ap-error);
+}
+
+.button {
+	appearance: none;
+
+	min-height: 44px;
+	padding: 8px 20px;
+	border: 1px solid var(--ap-border);
+	border-radius: 8px;
+
+	background: var(--ap-surface-raised);
+	color: var(--ap-text);
+
+	font: inherit;
+	font-size: 14px;
+
+	cursor: pointer;
+}
+
+.button:hover {
+	background: var(--ap-surface-hover);
+}
+
+.button:focus-visible,
+.input:focus-visible,
+.flats-open:focus-visible,
+.flats-table-wrap:focus-visible {
+	outline: 2px solid var(--ap-accent);
+	outline-offset: 2px;
+}
+
+.flats {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 20px 16px 40px;
+}
+
+.flats-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	gap: 12px;
+
+	margin-bottom: 16px;
+}
+
+.field {
+	display: grid;
+	gap: 4px;
+
+	/* Let a field shrink to a 360px screen, and grow to share a wide row. */
+	flex: 1 1 180px;
+	min-width: 0;
+}
+
+.field-label {
+	color: var(--ap-text-secondary);
+
+	font-size: 15px;
+}
+
+.input {
+	width: 100%;
+	min-height: 44px;
+	padding: 8px 12px;
+	border: 1px solid var(--ap-border);
+	border-radius: 8px;
+
+	background: var(--ap-surface-raised);
+	color: var(--ap-text);
+
+	font: inherit;
+}
+
+.flats-table-wrap {
+	overflow-x: auto;
+
+	border: 1px solid var(--ap-border);
+	border-radius: 8px;
+}
+
+.flats-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.flats-table th,
+.flats-table td {
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--ap-border);
+
+	text-align: start;
+	white-space: nowrap;
+}
+
+.flats-table thead th {
+	background: var(--ap-surface-raised);
+	color: var(--ap-text-secondary);
+
+	font-size: 15px;
+	font-weight: 500;
+}
+
+.flats-table tbody th {
+	font-weight: 500;
+	white-space: normal;
+}
+
+.flats-table tbody td {
+	color: var(--ap-text-secondary);
+}
+
+.flats-table tbody tr:last-child th,
+.flats-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.flats-open {
+	appearance: none;
+
+	/* A long title wraps inside the first column instead of pushing the table wider. */
+	min-width: 180px;
+	min-height: 44px;
+	padding: 0;
+	border: 0;
+
+	background: none;
+	color: var(--ap-text);
+
+	font: inherit;
+	text-align: start;
+	text-decoration: underline;
+
+	cursor: pointer;
+}
+
+.flats-status {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+
+	padding: 16px 0;
+
+	color: var(--ap-text-secondary);
+
+	font-size: 15px;
+}
+
+.flats-status.is-error,
+.flat-photo.is-failed {
+	color: var(--ap-error);
+}
+
+.flats-more {
+	padding: 16px 0 0;
+}
+
+.flats-count,
+.flat-path,
+.flat-photos-note,
+.flat-url-note {
+	color: var(--ap-text-secondary);
+
+	font-size: 15px;
+}
+
+.flats-count {
+	padding-top: 12px;
+}
+
+.flat-topbar {
+	margin-bottom: 16px;
+}
+
+.flat-path {
+	margin: -12px 0 16px;
+
+	overflow-wrap: anywhere;
+}
+
+.flat-facts {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 12px 24px;
+
+	margin: 0 0 24px;
+}
+
+.flat-fact dt {
+	color: var(--ap-text-secondary);
+
+	font-size: 15px;
+}
+
+.flat-fact dd {
+	margin: 0;
+
+	overflow-wrap: anywhere;
+}
+
+.flat-url,
+.flat-description,
+.flat-photos {
+	margin-bottom: 24px;
+}
+
+.flat-url-text {
+	margin: 0 0 8px;
+
+	overflow-wrap: anywhere;
+	user-select: all;
+}
+
+.flat-url-note {
+	margin-inline-start: 12px;
+}
+
+.flat-description p {
+	margin: 0;
+
+	/* Keep the line breaks of the ad text. */
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.flat-photos ul {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 12px;
+
+	margin: 0;
+	padding: 0;
+
+	list-style: none;
+}
+
+.flat-photo {
+	display: block;
+
+	width: 100%;
+	border-radius: 8px;
+
+	color: var(--ap-text-secondary);
+
+	font-size: 15px;
+}
