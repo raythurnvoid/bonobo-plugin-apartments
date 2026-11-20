@@ -48,9 +48,11 @@ Frontmatter keys:
 Rules for the writer:
 
 - **Numbers the views sort by** (`rentWarm`, `sizeM2`, `bikeMin`, `rooms`, `distanceKm`): write a
-  whole number, or a number with at most one decimal place. Never write a negative number. The
-  folder query sorts values as text and compares each run of digits by its value. This rule keeps
-  that order the same as the number order. `12.5` next to `12.25` is the shape that sorts wrong.
+  real YAML number, not a quoted one (`rooms: 2.5`, not `rooms: "2.5"`). The folder query sorts
+  stored numbers by value, so decimals and negative numbers sort right. A quoted number is text and
+  sorts after all numbers.
+- **Write `ideal` as a YAML boolean** (`true` or `false`, not quoted). The "Ideal" view matches the
+  boolean `true` only.
 - **Leave out a key that has no value.** Do not write `null`. A flat without `rentWarm` is not in
   the "Cheapest" view, a flat without `postedAt` is not in "Newest", and so on.
 - **Use one time format** for `postedAt`, for example `2026-11-03T09:15:00.000Z`. The "Newest" view

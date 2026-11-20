@@ -68,7 +68,7 @@ export function fixture_flats(count = 20): FixtureFlat[] {
 			rentWarmEstimated: index % 3 === 0,
 			rentCold,
 			sizeM2,
-			// At most one decimal place, like the flat file rule in the README asks.
+			// Half rooms test that the "Rooms" view sorts decimals by value.
 			rooms: isRoom ? 1 : 1 + (index % 3) + (index % 2 === 0 ? 0.5 : 0),
 			address: `${STREETS[index % STREETS.length]} ${index + 1}, Musterstadt`,
 			postcode: String(10100 + index * 3),
