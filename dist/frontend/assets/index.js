@@ -2386,7 +2386,7 @@ var src_default = {
 	lazy,
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED,
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/values/base64.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/values/base64.js
 var lookup = [];
 var revLookup = [];
 var Arr = Uint8Array;
@@ -2470,7 +2470,7 @@ function fromByteArray(uint8) {
 	}
 	return parts.join("");
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/common/index.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/common/index.js
 function parseArgs(args) {
 	if (args === void 0) return {};
 	if (!isSimpleObject(args)) throw new Error(`The arguments to a Convex function must be an object. Received: ${args}`);
@@ -2502,7 +2502,7 @@ function isSimpleObject(value) {
 	const isSimple = prototype === null || prototype === Object.prototype || prototype?.constructor?.name === "Object";
 	return isObject && isSimple;
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/values/value.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/values/value.js
 var LITTLE_ENDIAN = true;
 var MIN_INT64 = BigInt("-9223372036854775808");
 var MAX_INT64 = BigInt("9223372036854775807");
@@ -2707,7 +2707,7 @@ function convexOrUndefinedToJsonInternal(value, originalValue, context) {
 function convexToJson(value) {
 	return convexToJsonInternal(value, value, "", false);
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/values/errors.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/values/errors.js
 var __defProp$11 = Object.defineProperty;
 var __defNormalProp$11 = (obj, key, value) =>
 	key in obj
@@ -2731,9 +2731,9 @@ var ConvexError = class extends ((_b = Error), (_a = IDENTIFYING_FIELD), _b) {
 		this.data = data;
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/index.js
-var version = "1.50.0";
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/logging.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/index.js
+var version = "1.47.0";
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/logging.js
 var __defProp$10 = Object.defineProperty;
 var __defNormalProp$10 = (obj, key, value) =>
 	key in obj
@@ -2843,7 +2843,7 @@ function forwardData(result, error) {
 	error.data = result.errorData;
 	return error;
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/udf_path_utils.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/udf_path_utils.js
 function canonicalizeUdfPath(udfPath) {
 	const pieces = udfPath.split(":");
 	let moduleName;
@@ -2876,7 +2876,7 @@ function serializePaginatedPathAndArgs(udfPath, args, options) {
 		}),
 	});
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/local_state.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/local_state.js
 var __defProp$9 = Object.defineProperty;
 var __defNormalProp$9 = (obj, key, value) =>
 	key in obj
@@ -3149,7 +3149,7 @@ var LocalSyncState = class {
 		}
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/request_manager.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/request_manager.js
 var __defProp$8 = Object.defineProperty;
 var __defNormalProp$8 = (obj, key, value) =>
 	key in obj
@@ -3341,9 +3341,9 @@ var RequestManager = class {
 		return this.inflightActionsCount;
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/server/functionName.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/server/functionName.js
 var functionName = Symbol.for("functionName");
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/server/components/paths.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/server/components/paths.js
 var toReferencePath = Symbol.for("toReferencePath");
 function extractReferencePath(reference) {
 	return reference[toReferencePath] ?? null;
@@ -3364,7 +3364,7 @@ function getFunctionAddress(functionReference) {
 	}
 	return functionAddress;
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/server/api.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/server/api.js
 function getFunctionName(functionReference) {
 	const address = getFunctionAddress(functionReference);
 	if (address.name === void 0) {
@@ -3409,7 +3409,7 @@ function createApi(pathParts = []) {
 	);
 }
 var anyApi = createApi();
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/optimistic_updates_impl.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/optimistic_updates_impl.js
 var __defProp$7 = Object.defineProperty;
 var __defNormalProp$7 = (obj, key, value) =>
 	key in obj
@@ -3539,7 +3539,7 @@ var OptimisticQueryResults = class {
 		return this.queryResults.get(queryToken)?.result?.logLines;
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/vendor/long.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/vendor/long.js
 var __defProp$6 = Object.defineProperty;
 var __defNormalProp$6 = (obj, key, value) =>
 	key in obj
@@ -3620,7 +3620,7 @@ var TWO_PWR_16_DBL = 65536;
 var TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL;
 var TWO_PWR_64_DBL = TWO_PWR_32_DBL * TWO_PWR_32_DBL;
 var MAX_UNSIGNED_VALUE = new Long(-1, -1);
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/remote_query_set.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/remote_query_set.js
 var __defProp$5 = Object.defineProperty;
 var __defNormalProp$5 = (obj, key, value) =>
 	key in obj
@@ -3699,7 +3699,7 @@ var RemoteQuerySet = class {
 		return this.version.ts;
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/protocol.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/protocol.js
 function u64ToLong(encoded) {
 	const integerBytes = toByteArray(encoded);
 	return Long.fromBytesLE(Array.from(integerBytes));
@@ -3757,7 +3757,7 @@ function encodeClientMessage(message) {
 				};
 	}
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/web_socket_manager.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/web_socket_manager.js
 var __defProp$4 = Object.defineProperty;
 var __defNormalProp$4 = (obj, key, value) =>
 	key in obj
@@ -4351,7 +4351,7 @@ var WebSocketManager = class {
 			});
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/session.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/session.js
 function newSessionId() {
 	return uuidv4();
 }
@@ -4361,7 +4361,7 @@ function uuidv4() {
 		return (c === "x" ? r : (r & 3) | 8).toString(16);
 	});
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/vendor/jwt-decode/index.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/vendor/jwt-decode/index.js
 var InvalidTokenError = class extends Error {};
 InvalidTokenError.prototype.name = "InvalidTokenError";
 function b64DecodeUnicode(str) {
@@ -4411,7 +4411,7 @@ function jwtDecode(token, options) {
 		throw new InvalidTokenError(`Invalid token specified: invalid json for part #${pos + 1} (${e.message})`);
 	}
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/authentication_manager.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/authentication_manager.js
 var __defProp$3 = Object.defineProperty;
 var __defNormalProp$3 = (obj, key, value) =>
 	key in obj
@@ -4696,7 +4696,7 @@ var AuthenticationManager = class {
 		this.logger.logVerbose(`${message} [v${this.configVersion}]`);
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/metrics.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/metrics.js
 var markNames = ["convexClientConstructed", "convexWebSocketOpen", "convexFirstMessageReceived"];
 function mark(name, sessionId) {
 	const detail = { sessionId };
@@ -4723,7 +4723,7 @@ function getMarksReport(sessionId) {
 	}
 	return allMarks.map(performanceMarkToJson);
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/client.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/client.js
 var __defProp$2 = Object.defineProperty;
 var __defNormalProp$2 = (obj, key, value) =>
 	key in obj
@@ -5349,7 +5349,7 @@ var BaseConvexClient = class {
 			});
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/pagination.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/pagination.js
 function asPaginationResult(value) {
 	if (
 		typeof value !== "object" ||
@@ -5361,7 +5361,7 @@ function asPaginationResult(value) {
 		throw new Error(`Not a valid paginated query result: ${value?.toString()}`);
 	return value;
 }
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/browser/sync/paginated_query_client.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/browser/sync/paginated_query_client.js
 var __defProp$1 = Object.defineProperty;
 var __defNormalProp$1 = (obj, key, value) =>
 	key in obj
@@ -5669,7 +5669,7 @@ var PaginatedQueryClient = class {
 		return paginatedQuery;
 	}
 };
-// ../../node_modules/.pnpm/convex@1.50.0_@clerk+clerk-_c54b87385fdc9687decc9d1ce71b38da/node_modules/convex/dist/esm/react/client.js
+// node_modules/.pnpm/convex@1.47.0_react@19.3.1/node_modules/convex/dist/esm/react/client.js
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) =>
 	key in obj
@@ -6008,7 +6008,7 @@ var ConvexReactClient = class {
 	}
 };
 src_default.createContext(void 0);
-// ../../packages/bonobo-plugin-sdk/frontend.js
+// node_modules/.pnpm/bonobo-plugin-sdk@https+++c_c7b298101a5fc1c34e274536d6be1390/node_modules/bonobo-plugin-sdk/frontend.js
 /**
  * The plugin doors with the types the app generated into `convex-api.d.ts`. `anyApi` builds any
  * reference at runtime, so this cast is the one place the SDK trusts that the generated file

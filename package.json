@@ -13,7 +13,7 @@
 	},
 	"packageManager": "pnpm@12.14.0",
 	"dependencies": {
-		"bonobo-plugin-sdk": "link:../../packages/bonobo-plugin-sdk",
+		"bonobo-plugin-sdk": "github:raythurnvoid/bonobo-plugin-sdk#f7d22c421373b4e57cf9c0ff22ba97916e60a9ff",
 		"convex": "1.47.0",
 		"preact": "11.0.1",
 		"react": "19.3.1",

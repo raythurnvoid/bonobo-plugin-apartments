@@ -167,8 +167,8 @@ importers:
   .:
     dependencies:
       bonobo-plugin-sdk:
-        specifier: link:../../packages/bonobo-plugin-sdk
-        version: link:../../packages/bonobo-plugin-sdk
+        specifier: github:raythurnvoid/bonobo-plugin-sdk#f7d22c421373b4e57cf9c0ff22ba97916e60a9ff
+        version: https://codeload.github.com/raythurnvoid/bonobo-plugin-sdk/tar.gz/f7d22c421373b4e57cf9c0ff22ba97916e60a9ff(convex@1.47.0(react@19.3.1))(react@19.3.1)
       convex:
         specifier: 1.47.0
         version: 1.47.0(react@19.3.1)
@@ -226,6 +226,9 @@ packages:
   '@babel/runtime@7.29.14':
     resolution: {integrity: sha512-Y5tqevQaUAZhhj82BpYMNC1ssvLQTVAfwKdm8iy8qwmhvC2/CpcAu8OC+QEtjM7pMk7knx83u1Qj8gzkicyelw==}
     engines: {node: '>=6.9.0'}
+
+  '@cloudflare/workers-types@4.20260702.1':
+    resolution: {integrity: sha512-mOhf5TUEB1m2vPrxtqoIGfz0fUC9xyxRDx5gWHy5s+OCo6dcV+g7wI1R7gYCMFohhqF/2y2xeKVwMwCJjfn/WA==}
 
   '@emnapi/core@2.0.0-beta.2':
     resolution: {integrity: sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A==}
@@ -734,6 +737,13 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  bonobo-plugin-sdk@https://codeload.github.com/raythurnvoid/bonobo-plugin-sdk/tar.gz/f7d22c421373b4e57cf9c0ff22ba97916e60a9ff:
+    resolution: {gitHosted: true, integrity: sha512-YbyVaJsOdXbviSXFusxEEUEQGLEAOUG1rkG8V+iLkF7WMl/BQkqf+CQvDSbHtq0gmb3odqKMHws9q9L3jXLArQ==, tarball: https://codeload.github.com/raythurnvoid/bonobo-plugin-sdk/tar.gz/f7d22c421373b4e57cf9c0ff22ba97916e60a9ff}
+    version: 0.28.0
+    peerDependencies:
+      convex: ^1.46.0
+      react: ^19.3.0
 
   buffer-image-size@0.6.4:
     resolution: {integrity: sha512-nEh+kZOPY1w+gcCMobZ6ETUp9WfibndnosbpwB1iJk/8Gt5ZF2bhS6+B6bPYz424KtwsR6Rflc3tCz1/ghX2dQ==}
@@ -1356,6 +1366,8 @@ snapshots:
 
   '@babel/runtime@7.29.14': {}
 
+  '@cloudflare/workers-types@4.20260702.1': {}
+
   '@emnapi/core@2.0.0-beta.2':
     dependencies:
       '@emnapi/wasi-threads': 2.2.0
@@ -1670,6 +1682,12 @@ snapshots:
   available-typed-arrays@1.0.7:
     dependencies:
       possible-typed-array-names: 1.1.0
+
+  bonobo-plugin-sdk@https://codeload.github.com/raythurnvoid/bonobo-plugin-sdk/tar.gz/f7d22c421373b4e57cf9c0ff22ba97916e60a9ff(convex@1.47.0(react@19.3.1))(react@19.3.1):
+    dependencies:
+      '@cloudflare/workers-types': 4.20260702.1
+      convex: 1.47.0(react@19.3.1)
+      react: 19.3.1
 
   buffer-image-size@0.6.4:
     dependencies:

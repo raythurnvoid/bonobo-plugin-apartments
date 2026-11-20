@@ -4,23 +4,7 @@ A Bonobo Senate plugin page that shows flat listings saved as files. Each flat i
 with frontmatter. The page sorts and filters the flats by their frontmatter fields with
 `POST /api/v1/files/query`, so it never loads the whole folder.
 
-This is a draft (0.1.0). It is not published yet.
-
-## Before publishing
-
-`package.json` depends on the SDK with a local link:
-
-```json
-"bonobo-plugin-sdk": "link:../../packages/bonobo-plugin-sdk"
-```
-
-That link works only inside the Bonobo Senate repository. The `files/query` route is new in SDK
-0.28.0, which is not on the SDK mirror yet. Before you publish this plugin:
-
-1. Push SDK 0.28.0 to the mirror repository (`bonobo-plugin-sdk`).
-2. Change the dependency to that commit, like the other plugins do:
-   `"bonobo-plugin-sdk": "github:<owner>/bonobo-plugin-sdk#<commit>"`.
-3. Run `pnpm install`, then `pnpm build`, and commit the new `dist` and `bonobo.plugin.json`.
+Version 0.1.0 is a first draft. It pins SDK 0.28.0, the first SDK that types `files/query`.
 
 ## What the person must allow
 
