@@ -8,6 +8,9 @@ import { PERMISSION_MESSAGE } from "./flat-list";
 
 afterEach(cleanup);
 
+// The page registers what it shows for the chat agent. These tests do not read it.
+const agent = { setContextProvider: () => () => {} };
+
 test("shows the flats of a folder, opens one, and names the fix when the folder is not chosen", async () => {
 	const flats = fixture_flats(3);
 	const fetchJson = vi.fn(async (path: string, body: { path?: string }) => {
@@ -20,7 +23,7 @@ test("shows the flats of a folder, opens one, and names the fix when the folder 
 		return { status: 200, body: { items: flats.map(fixture_row), cursor: null, isDone: true } };
 	});
 	const fetchRaw = vi.fn(async () => new Response(fixture_flat_text(flats[0])));
-	render(<App client={{ fetchJson, fetchRaw } as unknown as BonoboClient} />);
+	render(<App client={{ fetchJson, fetchRaw, agent } as unknown as BonoboClient} />);
 
 	const open = await screen.findByRole("button", { name: flats[0].title });
 	expect(screen.getAllByRole("row")).toHaveLength(flats.length + 1);
@@ -45,7 +48,7 @@ test("starts the list again from the first page when Show is clicked with the sa
 		status: 200,
 		body: { items: flats.map(fixture_row), cursor: null, isDone: true },
 	}));
-	render(<App client={{ fetchJson, fetchRaw: vi.fn() } as unknown as BonoboClient} />);
+	render(<App client={{ fetchJson, fetchRaw: vi.fn(), agent } as unknown as BonoboClient} />);
 
 	await screen.findByRole("button", { name: flats[0].title });
 	fireEvent.click(screen.getByRole("button", { name: "Show" }));

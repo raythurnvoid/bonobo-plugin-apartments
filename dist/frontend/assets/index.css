@@ -133,6 +133,29 @@ h2 {
 	padding: 20px 16px 40px;
 }
 
+.flats-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+
+	margin-bottom: 16px;
+}
+
+.flats-header h1 {
+	margin: 0;
+}
+
+.flats-viewings {
+	margin-bottom: 24px;
+	padding: 16px;
+	border: 1px solid var(--ap-border);
+	border-radius: 8px;
+
+	background: var(--ap-surface-raised);
+}
+
 .flats-controls {
 	display: flex;
 	flex-wrap: wrap;
@@ -256,7 +279,7 @@ h2 {
 
 .flats-count,
 .flat-path,
-.flat-photos-note,
+.flat-note,
 .flat-url-note {
 	color: var(--ap-text-secondary);
 
@@ -299,7 +322,8 @@ h2 {
 
 .flat-url,
 .flat-description,
-.flat-photos {
+.flat-photos,
+.flat-messages {
 	margin-bottom: 24px;
 }
 
@@ -314,7 +338,9 @@ h2 {
 	margin-inline-start: 12px;
 }
 
-.flat-description p {
+.flat-description p,
+.flat-messages p,
+.flats-viewings-text {
 	margin: 0;
 
 	/* Keep the line breaks of the ad text. */

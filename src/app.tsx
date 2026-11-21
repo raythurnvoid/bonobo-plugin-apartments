@@ -1,6 +1,7 @@
 import type { BonoboClient } from "bonobo-plugin-sdk/frontend";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { list_flat_photos, read_flat_text, type FlatPhoto } from "./flat-details";
+import { describe_page, type FlatMessages, type PageContent } from "./agent-context";
+import { flat_messages_path, list_flat_photos, read_text_file, type FlatPhoto } from "./flat-details";
 import { create_flat_list } from "./flat-list";
 import { parse_flat_file, safe_ad_url, type FlatFacts, type FlatKey } from "./frontmatter";
 import { create_media_url_manager, type MediaUrlManager } from "./media-urls";
@@ -85,6 +86,17 @@ function format_date(value: unknown) {
 	return Number.isNaN(time) ? value : date_format.format(time);
 }
 
+function view_label(choice: ViewChoice) {
+	const label = VIEWS.find((option) => option.id === choice.view)?.label ?? choice.view;
+	if (choice.view === "status") {
+		return `${label}: ${choice.status}`;
+	}
+	if (choice.view === "cheapest" && choice.maxRent !== null) {
+		return `${label}, up to ${choice.maxRent} €`;
+	}
+	return label;
+}
+
 function row_title(row: FlatRow) {
 	const title = row_field(row, "frontmatter.title");
 	return typeof title === "string" && title !== "" ? title : row.name;
@@ -103,6 +115,10 @@ export function App(props: { client: BonoboClient }) {
 	// Count the Show clicks. Show must reload the list even when nothing changed, and equal state
 	// alone does not render again.
 	const [showCount, setShowCount] = useState(0);
+	const [viewingsOpen, setViewingsOpen] = useState(false);
+	// What the page shows, for the chat agent. Keep it in a ref: the host reads it right before each
+	// chat message, and updating it must not render the page again.
+	const pageRef = useRef<PageContent>({ folder, view: "", rows: [], openFlat: null, viewings: null });
 
 	const choice: ViewChoice = useMemo(() => ({ view, status, maxRent }), [view, status, maxRent]);
 
@@ -133,13 +149,45 @@ export function App(props: { client: BonoboClient }) {
 		}
 	}, [openRow]);
 
+	const handle_rows_loaded = useCallback((rows: FlatRow[]) => {
+		pageRef.current.rows = rows;
+	}, []);
+
+	const handle_flat_shown = useCallback((flat: PageContent["openFlat"]) => {
+		pageRef.current.openFlat = flat;
+	}, []);
+
+	const handle_viewings_shown = useCallback((text: string | null) => {
+		pageRef.current.viewings = text;
+	}, []);
+
+	// The list shows the applied folder and view, not the drafts in the form.
+	useEffect(() => {
+		pageRef.current.folder = folder;
+		pageRef.current.view = view_label(choice);
+	}, [folder, choice]);
+
+	// Send what the page shows with each chat message, so the agent can answer about "this flat".
+	useEffect(() => props.client.agent.setContextProvider(() => describe_page(pageRef.current)), [props.client]);
+
 	return (
 		<div className="flats">
 			{/* Keep the table mounted while the details show, so Back returns to the same rows. */}
 			<div hidden={openRow !== null}>
 				<header className="flats-header">
 					<h1>Flats</h1>
+					<button
+						className="button"
+						type="button"
+						aria-expanded={viewingsOpen}
+						onClick={() => setViewingsOpen((value) => !value)}
+					>
+						{viewingsOpen ? "Hide viewings" : "Viewings"}
+					</button>
 				</header>
+				{viewingsOpen ? (
+					<ViewingsPanel client={props.client} folder={folder} onViewingsShown={handle_viewings_shown} />
+				) : null}
 				<form className="flats-controls" onSubmit={handle_submit}>
 					<label className="field">
 						<span className="field-label">Folder</span>
@@ -208,6 +256,7 @@ export function App(props: { client: BonoboClient }) {
 					folder={folder}
 					choice={choice}
 					onOpen={setOpenRow}
+					onRowsLoaded={handle_rows_loaded}
 				/>
 			</div>
 			{openRow !== null ? (
@@ -216,6 +265,7 @@ export function App(props: { client: BonoboClient }) {
 					client={props.client}
 					media={media}
 					row={openRow}
+					onFlatShown={handle_flat_shown}
 					onClose={handle_close_details}
 				/>
 			) : null}
@@ -228,6 +278,7 @@ function FlatTable(props: {
 	folder: string;
 	choice: ViewChoice;
 	onOpen: (row: FlatRow) => void;
+	onRowsLoaded: (rows: FlatRow[]) => void;
 }) {
 	// Aborts when the table closes (a new folder or view mounts a new table), so the old paging and
 	// its 429 waits send no more requests.
@@ -285,6 +336,10 @@ function FlatTable(props: {
 
 	useEffect(() => () => controller.abort(), [controller]);
 
+	useEffect(() => {
+		props.onRowsLoaded(rows);
+	}, [props.onRowsLoaded, rows]);
+
 	return (
 		<div className="flats-list">
 			{rows.length > 0 ? (
@@ -295,12 +350,16 @@ function FlatTable(props: {
 						<thead>
 							<tr>
 								<th scope="col">Title</th>
+								<th scope="col">Kind</th>
 								<th scope="col">Warm rent</th>
 								<th scope="col">Size</th>
 								<th scope="col">Rooms</th>
 								<th scope="col">Bike</th>
+								<th scope="col">Walk</th>
 								<th scope="col">Posted</th>
+								<th scope="col">Found</th>
 								<th scope="col">Status</th>
+								<th scope="col">Ideal</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -316,13 +375,17 @@ function FlatTable(props: {
 											{row_title(row)}
 										</button>
 									</th>
+									<td>{String(row_field(row, "frontmatter.kind") ?? "—")}</td>
 									<td>{format_rent(row)}</td>
 									<td>{format_number(row_number(row, "frontmatter.sizeM2"), "m²")}</td>
 									<td>{row_number(row, "frontmatter.rooms") ?? "—"}</td>
 									<td>{format_number(row_number(row, "frontmatter.bikeMin"), "min")}</td>
+									<td>{format_number(row_number(row, "frontmatter.walkMin"), "min")}</td>
 									<td>{format_date(row_field(row, "frontmatter.postedAt"))}</td>
+									<td>{format_date(row_field(row, "frontmatter.firstSeenAt"))}</td>
 									{/* `String` shows a `true` or `false` status as text. JSX shows a boolean as nothing. */}
 									<td>{String(row_field(row, "frontmatter.status") ?? "—")}</td>
+									<td>{row_field(row, "frontmatter.ideal") === true ? "Yes" : "No"}</td>
 								</tr>
 							))}
 						</tbody>
@@ -418,11 +481,18 @@ type FlatDetails_State =
 	| { step: "error"; message: string }
 	| { step: "ready"; facts: FlatFacts; description: string; isCut: boolean };
 
-function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row: FlatRow; onClose: () => void }) {
-	const { client, row } = props;
+function FlatDetails(props: {
+	client: BonoboClient;
+	media: MediaUrlManager;
+	row: FlatRow;
+	onFlatShown: (flat: PageContent["openFlat"]) => void;
+	onClose: () => void;
+}) {
+	const { client, row, onFlatShown } = props;
 	const [state, setState] = useState<FlatDetails_State>({ step: "loading" });
 	const [photos, setPhotos] = useState<FlatPhoto[]>([]);
 	const [photosError, setPhotosError] = useState<string | null>(null);
+	const [messages, setMessages] = useState<FlatMessages>({ step: "loading" });
 	const [copyNote, setCopyNote] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const backRef = useRef<HTMLButtonElement | null>(null);
@@ -436,12 +506,19 @@ function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row:
 		const controller = new AbortController();
 		setState({ step: "loading" });
 		setPhotosError(null);
+		setMessages({ step: "loading" });
 
-		read_flat_text(client, row.path, controller.signal).then(
+		read_text_file(client, row.path, controller.signal).then(
 			(result) => {
-				if (!controller.signal.aborted) {
-					setState({ step: "ready", ...parse_flat_file(result.text), isCut: result.isCut });
+				if (controller.signal.aborted) {
+					return;
 				}
+				// The radar deletes a flat's file when the ad is gone or older than a week.
+				if (result === null) {
+					setState({ step: "error", message: `${row.path} is gone. The radar may have removed this flat.` });
+					return;
+				}
+				setState({ step: "ready", ...parse_flat_file(result.text), isCut: result.isCut });
 			},
 			(error: unknown) => {
 				if (!controller.signal.aborted) {
@@ -463,8 +540,40 @@ function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row:
 			},
 		);
 
+		// The messages load on their own too. A flat the user never wrote to has no messages file.
+		const messagesPath = flat_messages_path(row.path);
+		if (messagesPath === null) {
+			setMessages({ step: "none" });
+		} else {
+			read_text_file(client, messagesPath, controller.signal).then(
+				(result) => {
+					if (!controller.signal.aborted) {
+						setMessages(result === null ? { step: "none" } : { step: "ready", text: result.text });
+					}
+				},
+				(error: unknown) => {
+					if (!controller.signal.aborted) {
+						setMessages({ step: "error", message: get_error_message(error) });
+					}
+				},
+			);
+		}
+
 		return () => controller.abort();
 	}, [client, row.path, attempt]);
+
+	useEffect(() => {
+		onFlatShown({
+			path: row.path,
+			title: row_title(row),
+			facts: state.step === "ready" ? state.facts : null,
+			description: state.step === "ready" ? state.description : "",
+			messages,
+		});
+	}, [onFlatShown, row, state, messages]);
+
+	// The agent sees the flat only while its details are open.
+	useEffect(() => () => onFlatShown(null), [onFlatShown]);
 
 	const adUrl = state.step === "ready" ? safe_ad_url(state.facts.get("url")) : null;
 
@@ -551,7 +660,15 @@ function FlatDetails(props: { client: BonoboClient; media: MediaUrlManager; row:
 					</ul>
 				</div>
 			) : null}
-			{photosError !== null ? <p className="flat-photos-note">Photos could not load: {photosError}</p> : null}
+			{photosError !== null ? <p className="flat-note">Photos could not load: {photosError}</p> : null}
+			{messages.step === "ready" ? (
+				<div className="flat-messages">
+					<h2>Messages</h2>
+					{/* Plain text only, like the description. */}
+					<p>{messages.text}</p>
+				</div>
+			) : null}
+			{messages.step === "error" ? <p className="flat-note">Messages could not load: {messages.message}</p> : null}
 		</article>
 	);
 }
@@ -596,5 +713,77 @@ function FlatPhotoTile(props: { media: MediaUrlManager; photo: FlatPhoto }) {
 		</span>
 	) : (
 		<img className="flat-photo" src={url} alt={photo.name} loading="lazy" onError={handle_error} />
+	);
+}
+
+type ViewingsPanel_State =
+	{ step: "loading" } | { step: "error"; message: string } | { step: "ready"; text: string | null };
+
+function ViewingsPanel(props: {
+	client: BonoboClient;
+	folder: string;
+	onViewingsShown: (text: string | null) => void;
+}) {
+	const { client, folder, onViewingsShown } = props;
+	const [state, setState] = useState<ViewingsPanel_State>({ step: "loading" });
+	const [attempt, setAttempt] = useState(0);
+
+	useEffect(() => {
+		// A new folder or a retry drops the old text, so the panel never shows another folder's viewings.
+		const controller = new AbortController();
+		setState({ step: "loading" });
+
+		read_text_file(client, `${folder === "/" ? "" : folder}/viewings.md`, controller.signal).then(
+			(result) => {
+				if (!controller.signal.aborted) {
+					setState({ step: "ready", text: result?.text ?? null });
+				}
+			},
+			(error: unknown) => {
+				if (!controller.signal.aborted) {
+					setState({ step: "error", message: get_error_message(error) });
+				}
+			},
+		);
+
+		return () => controller.abort();
+	}, [client, folder, attempt]);
+
+	// Tell the agent what the open panel says, also when it has no viewings to show.
+	useEffect(() => {
+		if (state.step === "loading") {
+			onViewingsShown("Still loading.");
+		} else if (state.step === "error") {
+			onViewingsShown(`Could not load: ${state.message}`);
+		} else {
+			onViewingsShown(state.text ?? "No viewings yet (there is no viewings.md in this folder).");
+		}
+	}, [onViewingsShown, state]);
+
+	// The agent sees the viewings only while the panel is open.
+	useEffect(() => () => onViewingsShown(null), [onViewingsShown]);
+
+	return (
+		<section className="flats-viewings" aria-labelledby="flats-viewings-title">
+			<h2 id="flats-viewings-title">Viewings</h2>
+			{state.step === "loading" ? (
+				<div className="flats-status" role="status" aria-live="polite">
+					Loading…
+				</div>
+			) : null}
+			{state.step === "error" ? (
+				<div className="flats-status is-error" role="alert">
+					<span>{state.message}</span>
+					<button className="button" type="button" onClick={() => setAttempt((value) => value + 1)}>
+						Retry
+					</button>
+				</div>
+			) : null}
+			{state.step === "ready" && state.text === null ? (
+				<div className="flats-status">No viewings yet. The radar writes viewings.md into this folder.</div>
+			) : null}
+			{/* Plain text only. The file is never rendered as HTML. */}
+			{state.step === "ready" && state.text !== null ? <p className="flats-viewings-text">{state.text}</p> : null}
+		</section>
 	);
 }

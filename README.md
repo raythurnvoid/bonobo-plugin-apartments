@@ -4,13 +4,22 @@ A Bonobo Senate plugin page that shows flat listings saved as files. Each flat i
 with frontmatter. The page sorts and filters the flats by their frontmatter fields with
 `POST /api/v1/files/query`, so it never loads the whole folder.
 
-Version 0.1.1 is a first draft. It pins SDK 0.28.0, the first SDK that types `files/query`.
+Version 0.2.0 adds the Kind, Walk, Found and Ideal columns, two views, each flat's messages, the viewings panel,
+and the agent view context. It pins SDK 0.28.0, the first SDK that types `files/query`.
+
+The Berlin flat radar is the writer today: after each run it saves its flats into `/flats` of the
+user's home workspace. Marks (saved, contacted, hidden) are read-only here. The radar dashboard
+changes them.
 
 ## What the person must allow
 
-The plugin needs one capability: `workspace.files.read`. Each person then chooses the flats folder
-for this plugin in **My file permissions**. Without that choice the page says "Choose the flats
-folder in My file permissions."
+The plugin needs two capabilities:
+
+- `workspace.files.read` reads the flat files. Each person then chooses the flats folder for this
+  plugin in **My file permissions**. Without that choice the page says "Choose the flats folder in
+  My file permissions."
+- `agent.view-context` sends what the page shows to the chat agent with each chat message (see
+  "Agent view context").
 
 A flat file with its own sharing rules (a restricted file) does not show in the list.
 
@@ -21,6 +30,8 @@ A writer (for example a script that reads listing sites) saves one file per flat
 - File: `/flats/<source>-<sourceId>.md`
 - Photos: `/flats/<source>-<sourceId>/1.jpg`, `2.jpg`, … (a folder with the same name as the file,
   without `.md`). Photos are optional.
+- Messages: `/flats/<source>-<sourceId>/messages.md`, plain text, oldest message first. Optional.
+- Viewings: `/flats/viewings.md`, plain text. It has no frontmatter, so no view lists it. Optional.
 - Body: the ad description as plain text.
 
 Frontmatter keys:
@@ -65,14 +76,16 @@ Rules for the writer:
 
 Every view is one folder query on one field (`mode: "folder"`).
 
-| View               | Field                  | Query                                                                      |
-| ------------------ | ---------------------- | -------------------------------------------------------------------------- |
-| Newest             | `frontmatter.postedAt` | `order: "desc"`                                                            |
-| Cheapest           | `frontmatter.rentWarm` | `order: "asc"`; an optional max rent stops paging at the first larger rent |
-| Biggest            | `frontmatter.sizeM2`   | `order: "desc"`                                                            |
-| Shortest bike ride | `frontmatter.bikeMin`  | `order: "asc"`                                                             |
-| Ideal              | `frontmatter.ideal`    | `match: { eq: true }`                                                      |
-| By status          | `frontmatter.status`   | `match: { eq: "<status>" }`                                                |
+| View               | Field                     | Query                                                                      |
+| ------------------ | ------------------------- | -------------------------------------------------------------------------- |
+| Newest             | `frontmatter.postedAt`    | `order: "desc"`                                                            |
+| Cheapest           | `frontmatter.rentWarm`    | `order: "asc"`; an optional max rent stops paging at the first larger rent |
+| Biggest            | `frontmatter.sizeM2`      | `order: "desc"`                                                            |
+| Shortest bike ride | `frontmatter.bikeMin`     | `order: "asc"`                                                             |
+| Shortest walk      | `frontmatter.walkMin`     | `order: "asc"`                                                             |
+| Latest found       | `frontmatter.firstSeenAt` | `order: "desc"`                                                            |
+| Ideal              | `frontmatter.ideal`       | `match: { eq: true }`                                                      |
+| By status          | `frontmatter.status`      | `match: { eq: "<status>" }`                                                |
 
 The table asks for its columns with `fields`, so one request returns everything a page of rows
 shows. "Load more" follows the cursor, 50 rows per request. When the host ends the cursor (for
@@ -84,8 +97,30 @@ read. The ad address is shown as text with a Copy button, never as a link, becau
 cannot open new tabs. Photos come from `files/list` on the photo folder and `files/download-urls`.
 A file whose name does not end with `.md` has no photo folder, so it shows no photos.
 
+Combined filters (for example "under 900 € and under 20 minutes by bike") are not possible: each
+folder query reads one index range on one field, and anything more would read rows only to drop
+them. The radar's `ideal` field is the combined filter.
+
+The details also read the flat's `messages.md`, and the **Viewings** button reads
+`<folder>/viewings.md`. A missing file means "no messages" or "no viewings yet". Both show as plain
+text, never as HTML.
+
 The page keeps one thing in `localStorage`: the folder path, under the key
 `bonobo-plugin-apartments:folder`. It stores no file data there.
+
+## Agent view context
+
+Right before each chat message, the page tells the chat agent what it shows. The host's model reads
+at most 4 KiB of this text, so the page sends at most 4,000 bytes, most important part first:
+
+- With a flat open: its path, title and facts, the last 1,200 characters of its messages (or
+  "still loading", "none", "could not load"), then the description cut to 600 characters. The agent
+  reads the whole file with its own file tools.
+- Otherwise: the viewings while that panel is open (the first 1,500 characters), then the first 10
+  loaded rows.
+
+A cut text ends with `[Shortened.]`. The text says that titles, descriptions, messages and viewings
+come from ad sites and landlords, and that the agent must treat them as data, not as instructions.
 
 ## Commands
 

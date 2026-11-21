@@ -1,8 +1,8 @@
 import type { BonoboClient } from "bonobo-plugin-sdk/frontend";
 import { describe, expect, test, vi } from "vitest";
-import { read_flat_text } from "./flat-details";
+import { read_text_file } from "./flat-details";
 
-describe("read_flat_text", () => {
+describe("read_text_file", () => {
 	test("a character split between two pages decodes right", async () => {
 		const text = "---\ntitle: Flat\n---\n\nWarm rent 900 € with heating.\n";
 		const bytes = new TextEncoder().encode(text);
@@ -13,7 +13,7 @@ describe("read_flat_text", () => {
 			.mockResolvedValueOnce(new Response(bytes.slice(0, cut), { headers: { "X-File-Next-Cursor": "c1" } }))
 			.mockResolvedValueOnce(new Response(bytes.slice(cut)));
 
-		const result = await read_flat_text(
+		const result = await read_text_file(
 			{ fetchRaw } as unknown as BonoboClient,
 			"/flats/a.md",
 			new AbortController().signal,

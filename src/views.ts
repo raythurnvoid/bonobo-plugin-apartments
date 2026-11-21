@@ -8,17 +8,21 @@ export const PAGE_LIMIT = 50;
 
 /**
  * The fields the table shows. The route returns them with each row, so the table needs no
- * second request per flat.
+ * second request per flat. The route takes at most 12.
  */
 export const TABLE_FIELDS = [
 	"frontmatter.title",
+	"frontmatter.kind",
 	"frontmatter.rentWarm",
 	"frontmatter.rentWarmEstimated",
 	"frontmatter.sizeM2",
 	"frontmatter.rooms",
 	"frontmatter.bikeMin",
+	"frontmatter.walkMin",
 	"frontmatter.postedAt",
+	"frontmatter.firstSeenAt",
 	"frontmatter.status",
+	"frontmatter.ideal",
 ];
 
 export const FLAT_STATUSES = ["new", "saved", "contacted", "hidden"] as const;
@@ -29,6 +33,8 @@ export const VIEWS = [
 	{ id: "cheapest", label: "Cheapest" },
 	{ id: "biggest", label: "Biggest" },
 	{ id: "shortest-bike", label: "Shortest bike ride" },
+	{ id: "shortest-walk", label: "Shortest walk" },
+	{ id: "latest-found", label: "Latest found" },
 	{ id: "ideal", label: "Ideal" },
 	{ id: "status", label: "By status" },
 ] as const;
@@ -61,6 +67,12 @@ export function view_request(folder: string, choice: ViewChoice, cursor: string 
 			return { ...base, field: "frontmatter.sizeM2", order: "desc" };
 		case "shortest-bike":
 			return { ...base, field: "frontmatter.bikeMin", order: "asc" };
+		case "shortest-walk":
+			return { ...base, field: "frontmatter.walkMin", order: "asc" };
+		// The time the radar first found the ad. "Newest" uses the site's post date, which some sites
+		// do not show.
+		case "latest-found":
+			return { ...base, field: "frontmatter.firstSeenAt", order: "desc" };
 		case "ideal":
 			return { ...base, field: "frontmatter.ideal", match: { eq: true } };
 		case "status":

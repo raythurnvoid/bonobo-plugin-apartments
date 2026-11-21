@@ -6,10 +6,11 @@ import { fetch_json_with_429_retry, wait_before_429_retry } from "./retry";
 export const MAX_PHOTOS = 24;
 
 /**
- * The details stop reading a flat file after about this many bytes. An ad text is far shorter, so a
- * longer file is not a normal flat file, and reading all of it would only cost requests.
+ * The page stops reading a text file after about this many bytes. An ad text, a flat's messages and
+ * the viewings are far shorter, so a longer file is not a normal file, and reading all of it would
+ * only cost requests.
  */
-export const MAX_FLAT_TEXT_BYTES = 2 * 1024 * 1024;
+const MAX_TEXT_FILE_BYTES = 2 * 1024 * 1024;
 
 export type FlatPhoto = BonoboHttpApi["/api/v1/files/list"]["POST"]["response"][200]["body"]["items"][number];
 
@@ -21,13 +22,14 @@ function error_field(body: unknown, key: "message" | "errorCode" | "retryAfterMs
 }
 
 /**
- * Read the text of one flat file. `isCut` is true when the file is longer than
- * `MAX_FLAT_TEXT_BYTES` and only its start was read.
+ * Read the text of one file: a flat file, a flat's `messages.md`, or `viewings.md`. `isCut` is
+ * true when the file is longer than `MAX_TEXT_FILE_BYTES` and only its start was read. A missing
+ * file gives `null`: a flat without messages has no messages file.
  *
  * The read route answers bytes, one page at a time. One decoder is kept across the pages, so a
  * character that is split between two pages still decodes right.
  */
-export async function read_flat_text(client: BonoboClient, path: string, signal: AbortSignal) {
+export async function read_text_file(client: BonoboClient, path: string, signal: AbortSignal) {
 	let decoder = new TextDecoder();
 	let cursor: string | null = null;
 	let text = "";
@@ -47,6 +49,9 @@ export async function read_flat_text(client: BonoboClient, path: string, signal:
 			) {
 				rateLimitedRetries += 1;
 				continue;
+			}
+			if (response.status === 404 && cursor === null) {
+				return null;
 			}
 			// The file was saved again during the read, so the pages read so far do not fit the new
 			// text. Read it again from the start, once.
@@ -72,7 +77,7 @@ export async function read_flat_text(client: BonoboClient, path: string, signal:
 			return { text: text + decoder.decode(), isCut: false };
 		}
 		// Do not flush the decoder here. Half a character at the cut would show as a broken sign.
-		if (bytes >= MAX_FLAT_TEXT_BYTES) {
+		if (bytes >= MAX_TEXT_FILE_BYTES) {
 			return { text, isCut: true };
 		}
 		signal.throwIfAborted();
@@ -85,6 +90,14 @@ export async function read_flat_text(client: BonoboClient, path: string, signal:
  */
 export function flat_photo_folder(flatPath: string) {
 	return flatPath.endsWith(".md") ? flatPath.slice(0, -".md".length) : null;
+}
+
+/**
+ * The messages file of one flat. The radar writes it next to the photos.
+ */
+export function flat_messages_path(flatPath: string) {
+	const folder = flat_photo_folder(flatPath);
+	return folder === null ? null : `${folder}/messages.md`;
 }
 
 /**
